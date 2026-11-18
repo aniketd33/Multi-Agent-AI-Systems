@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create account | FinSight AI</title>
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+    <main class="auth-shell">
+        <section class="visual"><a class="brand" href="index.html">F <b>FinSight AI</b></a>
+            <div><small>YOUR RESEARCH WORKSPACE</small>
+                <h1>Bring financial research into <em>one place.</em></h1>
+                <p>Create an account to organize documents and explore AI-assisted financial insights.</p>
+            </div><small>Multi-Agent Financial Research Platform</small>
+        </section>
+        <section class="form-side">
+            <form class="card" id="registerForm"><small>GET STARTED</small>
+                <h2>Create your account</h2>
+                <p>A few details to set up your workspace.</p><label>Full name</label><input id="fullName" type="text"
+                    minlength="2" maxlength="120" autocomplete="name" required placeholder="Your full name"><label>Email
+                    address</label><input id="email" type="email" autocomplete="email" required
+                    placeholder="you@example.com"><label>Password</label><input id="password" type="password"
+                    minlength="8" autocomplete="new-password" required placeholder="At least 8 characters">
+                <div id="message" role="status"></div><button id="submitButton">Create account →</button>
+                <p class="switch">Already registered? <a href="login.html">Sign in</a></p>
+            </form>
+        </section>
+    </main>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>
