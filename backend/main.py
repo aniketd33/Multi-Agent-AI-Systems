@@ -4,6 +4,9 @@ import os
 import secrets
 import hashlib
 import hmac
+import uuid
+from pathlib import Path
+from sqlalchemy import ForeignKey
 
 from fastapi import (
     FastAPI,
@@ -84,6 +87,32 @@ class User(Base):
     )
 
 
+class ResearchSession(Base):
+    __tablename__ = "research_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ResearchDocument(Base):
+    __tablename__ = "research_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("research_sessions.id"), index=True, nullable=False)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(1000), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), default="application/pdf", nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+# Create only missing tables; existing Task 1 tables and records are preserved.
 Base.metadata.create_all(engine)
 
 
@@ -102,7 +131,7 @@ app.add_middleware(
         "http://[::1]:5500"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"]
 )
 
@@ -416,3 +445,309 @@ async def inspect_pdf(
         "message": "Text extraction preview only; no AI analysis has run.",
         "uploaded_by": user.email
     }
+
+
+# ---------------- RESEARCH WORKSPACE / TASK 3 ----------------
+
+STORAGE_BASE_PATH = Path(os.getenv(
+    "STORAGE_BASE_PATH",
+    str(Path(__file__).resolve().parent / "storage")
+)).resolve()
+MAX_RESEARCH_UPLOAD_SIZE = MAX_UPLOAD_SIZE
+RESEARCH_CHUNK_SIZE = 64 * 1024
+
+
+class ResearchSessionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=500)
+
+
+class ResearchSessionUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=500)
+
+
+def _session_or_404(session_id: int, user: User, db: Session):
+    item = db.query(ResearchSession).filter(
+        ResearchSession.id == session_id,
+        ResearchSession.owner_id == user.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Research session not found")
+    return item
+
+
+def _document_response(doc: ResearchDocument):
+    return {
+        "id": doc.id,
+        "session_id": doc.session_id,
+        "filename": doc.original_filename,
+        "stored_filename": doc.stored_filename,
+        "content_type": doc.content_type,
+        "size_bytes": doc.size_bytes,
+        "uploaded_at": doc.uploaded_at.isoformat() if doc.uploaded_at else None
+    }
+
+
+@app.post("/research/sessions", status_code=201)
+def create_research_session(
+    data: ResearchSessionCreate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Session name cannot be empty")
+    item = ResearchSession(owner_id=user.id, name=name, description=data.description.strip())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return {
+        "id": item.id, "name": item.name, "description": item.description,
+        "created_at": item.created_at.isoformat(), "updated_at": item.updated_at.isoformat(),
+        "document_count": 0
+    }
+
+
+@app.get("/research/sessions")
+def list_research_sessions(
+    search: str = "",
+    sort: str = "updated_desc",
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(ResearchSession).filter(ResearchSession.owner_id == user.id)
+    term = search.strip()
+    if term:
+        query = query.filter(
+            (ResearchSession.name.ilike(f"%{term}%")) |
+            (ResearchSession.description.ilike(f"%{term}%"))
+        )
+    if sort == "name_asc":
+        query = query.order_by(ResearchSession.name.asc())
+    elif sort == "created_asc":
+        query = query.order_by(ResearchSession.created_at.asc())
+    elif sort == "created_desc":
+        query = query.order_by(ResearchSession.created_at.desc())
+    else:
+        query = query.order_by(ResearchSession.updated_at.desc())
+    items = query.all()
+    return [{
+        "id": item.id, "name": item.name, "description": item.description,
+        "created_at": item.created_at.isoformat(), "updated_at": item.updated_at.isoformat(),
+        "document_count": db.query(ResearchDocument).filter(ResearchDocument.session_id == item.id).count()
+    } for item in items]
+
+
+@app.get("/research/sessions/{session_id}")
+def get_research_session(
+    session_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    item = _session_or_404(session_id, user, db)
+    docs = db.query(ResearchDocument).filter(
+        ResearchDocument.session_id == item.id,
+        ResearchDocument.owner_id == user.id
+    ).order_by(ResearchDocument.uploaded_at.desc()).all()
+    return {
+        "id": item.id, "name": item.name, "description": item.description,
+        "created_at": item.created_at.isoformat(), "updated_at": item.updated_at.isoformat(),
+        "documents": [_document_response(doc) for doc in docs]
+    }
+
+
+@app.patch("/research/sessions/{session_id}")
+def update_research_session(
+    session_id: int,
+    data: ResearchSessionUpdate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    item = _session_or_404(session_id, user, db)
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Session name cannot be empty")
+    item.name = name
+    item.description = data.description.strip()
+    item.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(item)
+    return {"id": item.id, "name": item.name, "description": item.description, "updated_at": item.updated_at.isoformat()}
+
+
+def _safe_storage_path(path_value: str) -> Path:
+    candidate = Path(path_value).resolve()
+    try:
+        candidate.relative_to(STORAGE_BASE_PATH)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document storage path")
+    return candidate
+
+
+@app.delete("/research/sessions/{session_id}", status_code=204)
+def delete_research_session(
+    session_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    item = _session_or_404(session_id, user, db)
+    docs = db.query(ResearchDocument).filter(
+        ResearchDocument.session_id == item.id,
+        ResearchDocument.owner_id == user.id
+    ).all()
+    paths = [doc.storage_path for doc in docs]
+    try:
+        for doc in docs:
+            db.delete(doc)
+        db.delete(item)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Research session deletion failed")
+    for value in paths:
+        try:
+            path = _safe_storage_path(value)
+            if path.is_file():
+                path.unlink()
+        except Exception as exc:
+            print(f"Research storage cleanup warning: {exc}")
+    return None
+
+
+@app.post("/research/sessions/{session_id}/documents", status_code=201)
+async def upload_research_document(
+    session_id: int,
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    item = _session_or_404(session_id, user, db)
+    original = Path(file.filename or "document.pdf").name
+    if not original.lower().endswith(".pdf"):
+        raise HTTPException(status_code=415, detail="Only PDF files are supported")
+
+    session_dir = (STORAGE_BASE_PATH / str(user.id) / str(item.id)).resolve()
+    try:
+        session_dir.relative_to(STORAGE_BASE_PATH)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid storage location")
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    stored = f"{uuid.uuid4().hex}.pdf"
+    temp_path = session_dir / f".{stored}.part"
+    final_path = session_dir / stored
+    total = 0
+    signature = b""
+    try:
+        with temp_path.open("wb") as output:
+            while True:
+                chunk = await file.read(RESEARCH_CHUNK_SIZE)
+                if not chunk:
+                    break
+                if not signature:
+                    signature = chunk[:5]
+                total += len(chunk)
+                if total > MAX_RESEARCH_UPLOAD_SIZE:
+                    raise HTTPException(status_code=413, detail="PDF exceeds the maximum upload limit of 100 MB")
+                output.write(chunk)
+        if signature != b"%PDF-":
+            raise HTTPException(status_code=400, detail="Invalid PDF signature")
+        temp_path.replace(final_path)
+        doc = ResearchDocument(
+            session_id=item.id, owner_id=user.id, original_filename=original,
+            stored_filename=stored, storage_path=str(final_path),
+            content_type="application/pdf", size_bytes=total
+        )
+        db.add(doc)
+        item.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(doc)
+        return _document_response(doc)
+    except HTTPException:
+        db.rollback()
+        if temp_path.exists():
+            temp_path.unlink(missing_ok=True)
+        if final_path.exists():
+            final_path.unlink(missing_ok=True)
+        raise
+    except Exception:
+        db.rollback()
+        if temp_path.exists():
+            temp_path.unlink(missing_ok=True)
+        if final_path.exists():
+            final_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Document upload failed")
+    finally:
+        await file.close()
+
+
+@app.get("/research/sessions/{session_id}/documents")
+def list_research_documents(
+    session_id: int,
+    search: str = "",
+    sort: str = "uploaded_desc",
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    _session_or_404(session_id, user, db)
+    query = db.query(ResearchDocument).filter(
+        ResearchDocument.session_id == session_id,
+        ResearchDocument.owner_id == user.id
+    )
+    if search.strip():
+        query = query.filter(ResearchDocument.original_filename.ilike(f"%{search.strip()}%"))
+    if sort == "name_asc":
+        query = query.order_by(ResearchDocument.original_filename.asc())
+    elif sort == "uploaded_asc":
+        query = query.order_by(ResearchDocument.uploaded_at.asc())
+    else:
+        query = query.order_by(ResearchDocument.uploaded_at.desc())
+    return [_document_response(doc) for doc in query.all()]
+
+
+@app.get("/research/documents/{document_id}/download")
+def download_research_document(
+    document_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    from fastapi.responses import FileResponse
+    doc = db.query(ResearchDocument).filter(
+        ResearchDocument.id == document_id,
+        ResearchDocument.owner_id == user.id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    path = _safe_storage_path(doc.storage_path)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Stored document file not found")
+    return FileResponse(path, media_type="application/pdf", filename=doc.original_filename)
+
+
+@app.delete("/research/documents/{document_id}", status_code=204)
+def delete_research_document(
+    document_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db)
+):
+    doc = db.query(ResearchDocument).filter(
+        ResearchDocument.id == document_id,
+        ResearchDocument.owner_id == user.id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    stored_path = doc.storage_path
+    try:
+        db.delete(doc)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Document deletion failed")
+    try:
+        path = _safe_storage_path(stored_path)
+        if path.is_file():
+            path.unlink()
+    except Exception as exc:
+        print(f"Research document cleanup warning: {exc}")
+    return None
