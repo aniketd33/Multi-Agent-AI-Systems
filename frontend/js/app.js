@@ -1,5 +1,27 @@
 
 const API = "http://127.0.0.1:8000";
+// ---------------- DASHBOARD DATE & YEAR ----------------
+
+function updateDashboardDate() {
+    const now = new Date();
+
+    const dateElement = document.getElementById("currentDate");
+    if (dateElement) {
+        dateElement.textContent = now.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric"
+        }).toUpperCase();
+    }
+
+    const yearElement = document.getElementById("currentYear");
+    if (yearElement) {
+        yearElement.textContent = now.getFullYear();
+    }
+}
+
+updateDashboardDate();
 
 // Maximum PDF upload size: 100 MB
 const MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
@@ -33,7 +55,25 @@ async function protectDashboard() {
         const welcome = document.querySelector(".welcome-section h1");
 
         if (welcome) {
-            welcome.textContent = `Good afternoon, ${user.full_name} ✦`;
+            const hour = new Date().getHours();
+
+            let greeting;
+
+            if (hour < 12) {
+                greeting = "Good morning";
+            } else if (hour < 17) {
+                greeting = "Good afternoon";
+            } else {
+                greeting = "Good evening";
+            }
+
+            welcome.replaceChildren(
+                document.createTextNode(`${greeting}, ${user.full_name} `)
+            );
+
+            const sparkle = document.createElement("span");
+            sparkle.textContent = "✦";
+            welcome.appendChild(sparkle);
         }
 
         const profileName = document.querySelector(".profile strong");
