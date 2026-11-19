@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,7 @@
     <title>FinSight AI | Financial Intelligence</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
     <div class="app-container">
 
@@ -36,7 +37,7 @@
                 <span class="nav-label">MAIN MENU</span>
                 <a href="#" class="nav-link active">▦ <span>Overview</span></a>
                 <a href="#" class="nav-link">▤ <span>Documents</span></a>
-                <a href="#" class="nav-link">⌕ <span>Research</span></a>
+                <a href="research.html" class="nav-link">⌕ <span>Research</span></a>
                 <a href="#" class="nav-link">◈ <span>AI Agents</span></a>
                 <a href="#" class="nav-link">▧ <span>Reports</span></a>
 
@@ -76,9 +77,10 @@
 
             <section class="welcome-section">
                 <div>
-                    <p class="eyebrow">TUESDAY, NOVEMBER 18, 2026</p>
+                    <p class="eyebrow" id="currentDate"></p>
                     <h1>Good afternoon, USER <span>✦</span></h1>
-                    <p class="welcome-description">Your financial intelligence command center. Here's what's happening today.</p>
+                    <p class="welcome-description">Your financial intelligence command center. Here's what's happening
+                        today.</p>
                 </div>
                 <button class="primary-button" id="uploadButton">＋ Upload document</button>
             </section>
@@ -137,12 +139,30 @@
                         <span class="live-badge"><i></i> LIVE</span>
                     </div>
                     <div class="agent-list">
-                        <div class="agent-row"><span class="agent-symbol">▤</span><div><strong>Document Agent</strong><small>Document understanding</small></div><span class="ready">Ready</span></div>
-                        <div class="agent-row"><span class="agent-symbol">◈</span><div><strong>Financial Agent</strong><small>Financial data extraction</small></div><span class="ready">Ready</span></div>
-                        <div class="agent-row"><span class="agent-symbol">⌁</span><div><strong>Risk Agent</strong><small>Risk identification</small></div><span class="ready">Ready</span></div>
-                        <div class="agent-row"><span class="agent-symbol">⇄</span><div><strong>Comparison Agent</strong><small>Comparative analysis</small></div><span class="ready">Ready</span></div>
-                        <div class="agent-row"><span class="agent-symbol">⌕</span><div><strong>Research Agent</strong><small>Market research</small></div><span class="ready">Ready</span></div>
-                        <div class="agent-row"><span class="agent-symbol">▧</span><div><strong>Report Agent</strong><small>Report generation</small></div><span class="ready">Ready</span></div>
+                        <div class="agent-row"><span class="agent-symbol">▤</span>
+                            <div><strong>Document Agent</strong><small>Document understanding</small></div><span
+                                class="ready">Ready</span>
+                        </div>
+                        <div class="agent-row"><span class="agent-symbol">◈</span>
+                            <div><strong>Financial Agent</strong><small>Financial data extraction</small></div><span
+                                class="ready">Ready</span>
+                        </div>
+                        <div class="agent-row"><span class="agent-symbol">⌁</span>
+                            <div><strong>Risk Agent</strong><small>Risk identification</small></div><span
+                                class="ready">Ready</span>
+                        </div>
+                        <div class="agent-row"><span class="agent-symbol">⇄</span>
+                            <div><strong>Comparison Agent</strong><small>Comparative analysis</small></div><span
+                                class="ready">Ready</span>
+                        </div>
+                        <div class="agent-row"><span class="agent-symbol">⌕</span>
+                            <div><strong>Research Agent</strong><small>Market research</small></div><span
+                                class="ready">Ready</span>
+                        </div>
+                        <div class="agent-row"><span class="agent-symbol">▧</span>
+                            <div><strong>Report Agent</strong><small>Report generation</small></div><span
+                                class="ready">Ready</span>
+                        </div>
                     </div>
                 </article>
             </section>
@@ -158,19 +178,39 @@
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>DOCUMENT</th><th>TYPE</th><th>DATE ADDED</th><th>STATUS</th></tr>
+                            <tr>
+                                <th>DOCUMENT</th>
+                                <th>TYPE</th>
+                                <th>DATE ADDED</th>
+                                <th>STATUS</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            <tr><td><span class="pdf-icon">PDF</span> Annual Report 2025</td><td>Annual Report</td><td>Nov 17, 2026</td><td><span class="status-complete">● Completed</span></td></tr>
-                            <tr><td><span class="pdf-icon">PDF</span> Amazon Form 10-K</td><td>SEC Filing</td><td>Nov 16, 2026</td><td><span class="status-complete">● Completed</span></td></tr>
-                            <tr><td><span class="pdf-icon">PDF</span> Q3 Earnings Transcript</td><td>Earnings Call</td><td>Nov 15, 2026</td><td><span class="status-processing">● Processing</span></td></tr>
+                            <tr>
+                                <td><span class="pdf-icon">PDF</span> Annual Report 2025</td>
+                                <td>Annual Report</td>
+                                <td>Nov 17, 2026</td>
+                                <td><span class="status-complete">● Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="pdf-icon">PDF</span> Amazon Form 10-K</td>
+                                <td>SEC Filing</td>
+                                <td>Nov 16, 2026</td>
+                                <td><span class="status-complete">● Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="pdf-icon">PDF</span> Q3 Earnings Transcript</td>
+                                <td>Earnings Call</td>
+                                <td>Nov 15, 2026</td>
+                                <td><span class="status-processing">● Processing</span></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <footer class="footer">
-                <span>© 2026 FinSight AI. Financial intelligence, reimagined.</span>
+                <span>© <span id="currentYear">2026</span> FinSight AI. Financial intelligence, reimagined.</span>
                 <span>Powered by Multi-Agent Intelligence</span>
             </footer>
         </main>
@@ -178,4 +218,5 @@
 
     <script src="js/app.js"></script>
 </body>
+
 </html>
