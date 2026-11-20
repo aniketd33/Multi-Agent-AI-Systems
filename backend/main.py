@@ -334,6 +334,19 @@ async def register_page():
 # HEALTH CHECK — single endpoint, merged information
 # ===========================================================================
 
+@app.get("/research.html")
+async def research_page():
+    research_path = os.path.join(FRONTEND_DIR, "research.html")
+
+    if os.path.exists(research_path):
+        return FileResponse(research_path)
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Research Workspace page not found"}
+    )
+
+
 @app.get("/health")
 async def health():
     return {

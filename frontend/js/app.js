@@ -133,7 +133,7 @@ var browseButton = document.getElementById("browseButton");
 var uploadButton = document.getElementById("uploadButton");
 var dropZone     = document.getElementById("dropZone");
 
-var DOC_AGENT_MAX_SIZE = 20 * 1024 * 1024;   // 20 MB - Document Agent limit
+var DOC_AGENT_MAX_SIZE = 100 * 1024 * 1024;  // 100 MB - Document Agent limit
 var MAX_UPLOAD_SIZE    = 100 * 1024 * 1024;  // 100 MB - FinSight inspect limit
 
 var isUploading = false;
@@ -267,7 +267,7 @@ function validateDocAgentFile(file) {
     if (file.size === 0) { return "File is empty. Please select a non-empty file."; }
     if (file.size > DOC_AGENT_MAX_SIZE) {
         var mb = (file.size / (1024 * 1024)).toFixed(1);
-        return "File too large (" + mb + " MB). Maximum allowed: 20 MB.";
+        return "File too large (" + mb + " MB). Maximum allowed: 100 MB.";
     }
     return null;
 }
