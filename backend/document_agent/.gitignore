@@ -1,0 +1,28 @@
+# Nested .gitignore for the Document Agent module.
+# These rules apply only to files under backend/document_agent/ and do not
+# touch the shared root .gitignore.
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Python virtual environments (never commit)
+.venv/
+venv/
+
+# ChromaDB persistent storage (generated at runtime — never committed)
+data/vector_db/
+
+# Environment / secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+
+# OS noise
+.DS_Store
+Thumbs.db
