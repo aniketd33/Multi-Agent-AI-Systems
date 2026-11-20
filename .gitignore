@@ -1,23 +1,86 @@
+
+# ============================================
+# Multi-Agent AI System - Git Ignore
+# ============================================
+
 # Python
-venv/
-.venv/
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
 
-# Environment and secrets
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables and secrets
 .env
 .env.*
 !.env.example
 
-# Database
+# Database files
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
 
-# Temporary files
-*.log
+# Uploaded documents
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Seed documents
+# Keep seed document files trackable when approved for sharing.
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+tests/test_uploads/
+tests/test_db/
+*.test.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+
+# Operating system
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Local financial documents
-data/
+# Logs and temporary files
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Documentation build
+docs/_build/
+site/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Backup files
+*.backup
+*.old
+*.orig
+
+# Archives
+*.zip
+*.tar.gz
+*.rar

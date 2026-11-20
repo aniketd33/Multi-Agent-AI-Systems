@@ -1,7 +1,28 @@
-fastapi
-uvicorn[standard]
-python-jose[cryptography]
-pydantic[email]
+# FinSight AI - Multi-Agent AI System
+
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# File uploads and validation
+python-multipart==0.0.6
+python-magic-bin==0.4.14
+
+# Data validation
+pydantic[email]==2.5.0
+
+# Authentication and security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Database
 SQLAlchemy
+aiosqlite==0.19.0
+
+# PDF processing
 PyMuPDF
-python-multipart
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.1

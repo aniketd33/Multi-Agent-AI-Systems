@@ -796,3 +796,80 @@ body.dark .pdf-icon {
         flex-direction: column;
     }
 }
+
+/* ============================================================
+   Document Agent Integration Styles
+   Added for app.js: status badges, delete button, action col.
+   Scoped to avoid overriding existing FinSight table styles.
+   ============================================================ */
+
+/* Base badge — wraps all Document Agent status values */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+/* Individual badge colours (double-class so they only apply when
+   .status-badge is also present — no conflict with HEAD's plain
+   .status-processing colour rule). */
+.status-badge.status-uploaded {
+    background: #bee3f8;
+    color: #2c5282;
+}
+
+.status-badge.status-processing {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.status-indexed {
+    background: #d6bcfa;
+    color: #44337a;
+}
+
+.status-badge.status-failed {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+/* Delete button in Recent Documents table */
+.delete-btn {
+    background: var(--red, #d46c63);
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+    transition: background .2s;
+}
+
+.delete-btn:hover {
+    background: #bb4f47;
+}
+
+.delete-btn:disabled {
+    background: #9aa69f;
+    cursor: not-allowed;
+}
+
+/* ACTION column header added dynamically by app.js */
+th.action-col {
+    color: #9aa69f;
+    font-size: 9px;
+    letter-spacing: .6px;
+    font-weight: 700;
+}
+
+/* Dark theme adjustments for new elements */
+body.dark .status-badge.status-uploaded   { background: #1e3a5f; color: #90c5f0; }
+body.dark .status-badge.status-processing { background: #3d2e06; color: #f6c76b; }
+body.dark .status-badge.status-indexed    { background: #2d1f4a; color: #c5a8f8; }
+body.dark .status-badge.status-failed     { background: #3d1414; color: #f8a3a3; }
+body.dark .delete-btn                     { background: #c0524a; }
+body.dark .delete-btn:hover               { background: #a63d36; }
