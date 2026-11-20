@@ -302,6 +302,8 @@ async function uploadDocumentAgent(file) {
         var doc = data.document;
         showStatus('"' + doc.filename + '" uploaded successfully (' + doc.file_type + ').', "success");
         await loadDocuments();
+        // Poll for status updates until pipeline finishes
+        pollDocumentStatus(doc.document_id, doc.filename);
 
     } catch (e) {
         console.error("Document Agent upload error:", e);
@@ -311,6 +313,51 @@ async function uploadDocumentAgent(file) {
         if (uploadButton) { uploadButton.disabled = false; uploadButton.textContent = "\uff0b Upload document"; }
         if (fileInput) { fileInput.value = ""; }
     }
+}
+
+// ---------------------------------------------------------------------------
+// STATUS POLLING -- refresh document list until pipeline finishes
+// ---------------------------------------------------------------------------
+
+var pollTimer = null;
+
+function pollDocumentStatus(docId, filename) {
+    if (pollTimer) { clearTimeout(pollTimer); }
+    var attempts = 0;
+    var maxAttempts = 60;
+
+    function checkOnce() {
+        attempts++;
+        fetch(API + "/api/documents/" + encodeURIComponent(docId))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var doc = data.document;
+                if (!doc) { return; }
+                var st = doc.status;
+                loadDocuments();
+                if (st === "indexed") {
+                    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+                    showStatus('"' + filename + '" indexed successfully.', 'success');
+                } else if (st === "failed") {
+                    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+                    showStatus('"' + filename + '" processing failed. See server logs.', 'error');
+                } else if (st === "uploaded" || st === "processing") {
+                    if (attempts < maxAttempts) {
+                        pollTimer = setTimeout(checkOnce, 2000);
+                    } else {
+                        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+                    showStatus('"' + filename + '" is still processing. Refresh later to check.', 'info');
+                    }
+                }
+            })
+            .catch(function(err) {
+                console.error("Polling error:", err);
+                if (attempts < maxAttempts) {
+                    pollTimer = setTimeout(checkOnce, 2000);
+                }
+            });
+    }
+    pollTimer = setTimeout(checkOnce, 2000);
 }
 
 // ---------------------------------------------------------------------------
