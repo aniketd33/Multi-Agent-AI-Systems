@@ -100,7 +100,7 @@ if (loginForm) {
             message.textContent = "Login successful! Opening dashboard...";
 
             setTimeout(() => {
-                window.location.href = "index.html";
+                window.location.href = "/";
             }, 500);
 
         } catch (error) {

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Upload Service Module
 Handles file upload, validation, and storage operations
 Multi-Agent AI System for Finance and Business Insights
@@ -39,6 +39,7 @@ MIME_TYPE_MAPPINGS = {
     "application/pdf": "PDF",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
     "application/msword": "DOC",  # Older Word format
+    "application/zip": "DOCX",         # DOCX files are ZIP archives; libmagic may return this
     "text/plain": "TXT",
 }
 

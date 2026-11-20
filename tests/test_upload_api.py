@@ -1,63 +1,33 @@
 ﻿"""
 Upload API Tests
-Tests for document upload endpoint and validation
+Tests for the Document Agent upload endpoint and validation.
+
+The 'client' fixture (session-scoped TestClient) is defined in conftest.py.
+All tests run against test_documents.db, never against documents.db.
 """
 
 import pytest
-import sys
 from pathlib import Path
 from io import BytesIO
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from fastapi.testclient import TestClient
-from backend.main import app
-from backend.database import clear_all_documents, get_document_count
+from backend.database import get_document_count
 from backend.services.upload import UPLOAD_DIR
 
-# Create test client
-client = TestClient(app)
-
-# ============================================
-# FIXTURES
-# ============================================
-
-@pytest.fixture
-async def clean_test_environment():
-    """
-    Clean database and uploads before each test
-    """
-    # Clear database
-    await clear_all_documents()
-    
-    # Clean upload directory (test files only)
-    if UPLOAD_DIR.exists():
-        for file in UPLOAD_DIR.glob("test-*"):
-            file.unlink()
-    
-    yield
-    
-    # Cleanup after test
-    await clear_all_documents()
-
-
-def create_test_file(filename: str, content: bytes, size: int = None) -> BytesIO:
-    """
-    Create a test file for upload
-    
-    Args:
-        filename: Filename to use
-        content: File content
-        size: Optional size override
-    """
-    if size:
-        # Create file of specific size
-        file_content = b"0" * size
-    else:
-        file_content = content
-    
-    return ("file", (filename, BytesIO(file_content), "application/octet-stream"))
+# ---------------------------------------------------------------------------
+# Real ZIP bytes for DOCX fixtures.
+# A DOCX is a ZIP archive.  python-magic returns application/zip for a
+# structurally valid ZIP file; the production mapping accepts that as DOCX.
+# Plain b"PK\x03\x04" + zeros is detected as application/octet-stream and
+# is correctly rejected, so we must use a real ZIP payload here.
+# ---------------------------------------------------------------------------
+_REAL_DOCX_BYTES = bytes.fromhex(
+    "504b03041400000000000bbe735d3ff2f44f0500000005000000130000005b436f6e74656e745f54797065735d"
+    "2e786d6c64756d6d79504b03041400000000000bbe735d3ff2f44f050000000500000011000000776f72642f646f"
+    "63756d656e742e786d6c64756d6d79504b010214001400000000000bbe735d3ff2f44f050000000500000013000000"
+    "00000000000000008001000000005b436f6e74656e745f54797065735d2e786d6c504b01021400140000000000"
+    "0bbe735d3ff2f44f0500000005000000110000000000000000000000800136000000776f72642f646f63756d656e74"
+    "2e786d6c504b05060000000002000200800000006a0000000000"
+)
 
 
 # ============================================
@@ -65,18 +35,14 @@ def create_test_file(filename: str, content: bytes, size: int = None) -> BytesIO
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_valid_pdf(clean_test_environment):
-    """
-    Test uploading a valid PDF file
-    """
-    # Create fake PDF content
+async def test_upload_valid_pdf(client):
     pdf_content = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n" + b"0" * 1000
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("test_document.pdf", BytesIO(pdf_content), "application/pdf")}
+        files={"file": ("test_document.pdf", BytesIO(pdf_content), "application/pdf")},
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "success"
@@ -88,17 +54,14 @@ async def test_upload_valid_pdf(clean_test_environment):
 
 
 @pytest.mark.asyncio
-async def test_upload_valid_txt(clean_test_environment):
-    """
-    Test uploading a valid TXT file
-    """
+async def test_upload_valid_txt(client):
     txt_content = b"This is a test text file content."
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("test_document.txt", BytesIO(txt_content), "text/plain")}
+        files={"file": ("test_document.txt", BytesIO(txt_content), "text/plain")},
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "success"
@@ -106,22 +69,23 @@ async def test_upload_valid_txt(clean_test_environment):
 
 
 @pytest.mark.asyncio
-async def test_upload_valid_docx(clean_test_environment):
-    """
-    Test uploading a valid DOCX file
-    """
-    # Minimal valid DOCX signature
-    docx_content = b"PK\x03\x04" + b"0" * 1000
-    
+async def test_upload_valid_docx(client):
+    """DOCX is a ZIP archive; libmagic returns application/zip for valid ZIP bytes."""
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("test_document.docx", BytesIO(docx_content), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
+        files={
+            "file": (
+                "test_document.docx",
+                BytesIO(_REAL_DOCX_BYTES),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "success"
-    assert data["document"]["file_type"] in ["DOCX", "ZIP"]  # May detect as ZIP
+    assert data["document"]["file_type"] in ("DOCX", "ZIP")
 
 
 # ============================================
@@ -129,49 +93,37 @@ async def test_upload_valid_docx(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_invalid_extension_jpg(clean_test_environment):
-    """
-    Test uploading JPG file (not allowed)
-    """
+async def test_upload_invalid_extension_jpg(client):
     jpg_content = b"\xFF\xD8\xFF\xE0" + b"0" * 1000
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("image.jpg", BytesIO(jpg_content), "image/jpeg")}
+        files={"file": ("image.jpg", BytesIO(jpg_content), "image/jpeg")},
     )
-    
+
     assert response.status_code == 400
-    data = response.json()
-    assert "not allowed" in data["detail"].lower()
+    assert "not allowed" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
-async def test_upload_invalid_extension_exe(clean_test_environment):
-    """
-    Test uploading EXE file (not allowed)
-    """
+async def test_upload_invalid_extension_exe(client):
     exe_content = b"MZ" + b"0" * 1000
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("malware.exe", BytesIO(exe_content), "application/octet-stream")}
+        files={"file": ("malware.exe", BytesIO(exe_content), "application/octet-stream")},
     )
-    
+
     assert response.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_upload_no_extension(clean_test_environment):
-    """
-    Test uploading file without extension
-    """
-    content = b"Some content"
-    
+async def test_upload_no_extension(client):
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("noextension", BytesIO(content), "application/octet-stream")}
+        files={"file": ("noextension", BytesIO(b"Some content"), "application/octet-stream")},
     )
-    
+
     assert response.status_code == 400
 
 
@@ -180,54 +132,40 @@ async def test_upload_no_extension(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_empty_file(clean_test_environment):
-    """
-    Test uploading empty file (0 bytes)
-    """
-    empty_content = b""
-    
+async def test_upload_empty_file(client):
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("empty.pdf", BytesIO(empty_content), "application/pdf")}
+        files={"file": ("empty.pdf", BytesIO(b""), "application/pdf")},
     )
-    
+
     assert response.status_code == 400
-    data = response.json()
-    assert "empty" in data["detail"].lower()
+    assert "empty" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
-async def test_upload_oversized_file(clean_test_environment):
-    """
-    Test uploading file larger than 20 MB
-    """
-    # Create 21 MB file
+async def test_upload_oversized_file(client):
     large_content = b"0" * (21 * 1024 * 1024)
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("large.pdf", BytesIO(large_content), "application/pdf")}
+        files={"file": ("large.pdf", BytesIO(large_content), "application/pdf")},
     )
-    
+
     assert response.status_code == 400
-    data = response.json()
-    assert "too large" in data["detail"].lower() or "maximum" in data["detail"].lower()
+    detail = response.json()["detail"].lower()
+    assert "too large" in detail or "maximum" in detail
 
 
 @pytest.mark.asyncio
-async def test_upload_max_size_boundary(clean_test_environment):
-    """
-    Test uploading file at exactly 20 MB (boundary test)
-    """
-    # Create exactly 20 MB file with PDF signature
+async def test_upload_max_size_boundary(client):
+    """File at exactly 20 MB should be accepted."""
     max_content = b"%PDF-1.4\n" + b"0" * (20 * 1024 * 1024 - 10)
-    
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("max_size.pdf", BytesIO(max_content), "application/pdf")}
+        files={"file": ("max_size.pdf", BytesIO(max_content), "application/pdf")},
     )
-    
-    # Should succeed (exactly at limit)
+
     assert response.status_code == 201
 
 
@@ -236,80 +174,57 @@ async def test_upload_max_size_boundary(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_stores_in_database(clean_test_environment):
-    """
-    Test that upload stores metadata in database
-    """
-    txt_content = b"Database integration test"
-    
-    # Check initial count
+async def test_upload_stores_in_database(client):
+    """Upload should increment the test database row count."""
     count_before = await get_document_count()
-    
-    # Upload file
+
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("db_test.txt", BytesIO(txt_content), "text/plain")}
+        files={"file": ("db_test.txt", BytesIO(b"Database integration test"), "text/plain")},
     )
-    
+
     assert response.status_code == 201
-    
-    # Check count after upload
-    count_after = await get_document_count()
-    assert count_after == count_before + 1
+    assert await get_document_count() == count_before + 1
 
 
 @pytest.mark.asyncio
-async def test_upload_multiple_files(clean_test_environment):
-    """
-    Test uploading multiple files sequentially
-    """
+async def test_upload_multiple_files(client):
     files = [
         ("file1.pdf", b"%PDF" + b"0" * 100),
         ("file2.txt", b"Text content"),
-        ("file3.docx", b"PK\x03\x04" + b"0" * 100)
+        ("file3.docx", _REAL_DOCX_BYTES),
     ]
-    
+
     for filename, content in files:
-        response = client.post(
+        r = client.post(
             "/api/documents/upload",
-            files={"file": (filename, BytesIO(content))}
+            files={"file": (filename, BytesIO(content))},
         )
-        assert response.status_code == 201
-    
-    # Check all files stored
-    count = await get_document_count()
-    assert count == 3
+        assert r.status_code == 201, f"Upload of {filename} failed: {r.text}"
+
+    assert await get_document_count() == 3
 
 
 @pytest.mark.asyncio
-async def test_upload_duplicate_filename_allowed(clean_test_environment):
-    """
-    Test that uploading same filename twice is allowed (different document IDs)
-    """
+async def test_upload_duplicate_filename_allowed(client):
     content = b"Test content"
-    
-    # Upload first file
-    response1 = client.post(
+
+    r1 = client.post(
         "/api/documents/upload",
-        files={"file": ("duplicate.txt", BytesIO(content), "text/plain")}
+        files={"file": ("duplicate.txt", BytesIO(content), "text/plain")},
     )
-    assert response1.status_code == 201
-    doc1_id = response1.json()["document"]["document_id"]
-    
-    # Upload same filename again
-    response2 = client.post(
+    assert r1.status_code == 201
+    id1 = r1.json()["document"]["document_id"]
+
+    r2 = client.post(
         "/api/documents/upload",
-        files={"file": ("duplicate.txt", BytesIO(content), "text/plain")}
+        files={"file": ("duplicate.txt", BytesIO(content), "text/plain")},
     )
-    assert response2.status_code == 201
-    doc2_id = response2.json()["document"]["document_id"]
-    
-    # Document IDs should be different
-    assert doc1_id != doc2_id
-    
-    # Both should be in database
-    count = await get_document_count()
-    assert count == 2
+    assert r2.status_code == 201
+    id2 = r2.json()["document"]["document_id"]
+
+    assert id1 != id2
+    assert await get_document_count() == 2
 
 
 # ============================================
@@ -317,24 +232,13 @@ async def test_upload_duplicate_filename_allowed(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_creates_physical_file(clean_test_environment):
-    """
-    Test that upload creates actual file in uploads directory
-    """
-    content = b"Physical file test"
-    
+async def test_upload_creates_physical_file(client):
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("physical_test.txt", BytesIO(content), "text/plain")}
+        files={"file": ("physical_test.txt", BytesIO(b"Physical file test"), "text/plain")},
     )
-    
+
     assert response.status_code == 201
-    data = response.json()
-    
-    # Check file exists
-    file_path = Path(data["document"]["file_path"]) if "file_path" in data["document"] else None
-    
-    # File should exist in uploads directory
     uploaded_files = list(UPLOAD_DIR.glob("*physical_test*"))
     assert len(uploaded_files) > 0
 
@@ -344,31 +248,26 @@ async def test_upload_creates_physical_file(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_without_file(clean_test_environment):
-    """
-    Test upload request without file
-    """
+async def test_upload_without_file(client):
     response = client.post("/api/documents/upload")
-    
     assert response.status_code == 422  # Unprocessable Entity
 
 
 @pytest.mark.asyncio
-async def test_upload_with_special_characters_filename(clean_test_environment):
-    """
-    Test uploading file with special characters in filename
-    """
-    content = b"Special chars test"
-    
+async def test_upload_with_special_characters_filename(client):
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("file with spaces & special@chars!.txt", BytesIO(content), "text/plain")}
+        files={
+            "file": (
+                "file with spaces & special@chars!.txt",
+                BytesIO(b"Special chars test"),
+                "text/plain",
+            )
+        },
     )
-    
+
     assert response.status_code == 201
-    data = response.json()
-    # Original filename should be preserved
-    assert data["document"]["filename"] == "file with spaces & special@chars!.txt"
+    assert response.json()["document"]["filename"] == "file with spaces & special@chars!.txt"
 
 
 # ============================================
@@ -376,33 +275,22 @@ async def test_upload_with_special_characters_filename(clean_test_environment):
 # ============================================
 
 @pytest.mark.asyncio
-async def test_upload_response_format(clean_test_environment):
-    """
-    Test that upload response has correct format
-    """
-    content = b"Response format test"
-    
+async def test_upload_response_format(client):
     response = client.post(
         "/api/documents/upload",
-        files={"file": ("format_test.txt", BytesIO(content), "text/plain")}
+        files={"file": ("format_test.txt", BytesIO(b"Response format test"), "text/plain")},
     )
-    
+
     assert response.status_code == 201
     data = response.json()
-    
-    # Check required fields
-    assert "status" in data
-    assert "message" in data
+
+    assert "status"   in data
+    assert "message"  in data
     assert "document" in data
-    
+
     doc = data["document"]
-    assert "document_id" in doc
-    assert "filename" in doc
-    assert "file_type" in doc
-    assert "file_size" in doc
-    assert "upload_date" in doc
-    assert "status" in doc
-    
-    # Check values
-    assert data["status"] == "success"
-    assert doc["status"] == "uploaded"
+    for field in ("document_id", "filename", "file_type", "file_size", "upload_date", "status"):
+        assert field in doc, f"Missing field: {field}"
+
+    assert data["status"]   == "success"
+    assert doc["status"]    == "uploaded"

@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 # Database file path (stored in project root)
-DATABASE_PATH = os.path.join(PROJECT_ROOT, "documents.db")
+DATABASE_PATH = os.environ.get(
+    "DOCUMENTS_DATABASE_PATH",
+    os.path.join(PROJECT_ROOT, "documents.db")
+)
 
 # ============================================
 # DATABASE SCHEMA

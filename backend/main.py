@@ -157,7 +157,10 @@ Base.metadata.create_all(engine)
 # FASTAPI APPLICATION
 # ===========================================================================
 
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "frontend"
+)
 
 app = FastAPI(
     title="FinSight AI + Document Intelligence Agent",
@@ -193,10 +196,11 @@ app.add_middleware(
 app.include_router(documents_router)
 
 # ---------------------------------------------------------------------------
-# Static file serving for the Document Agent frontend
+# Static file serving for the FinSight frontend
 # ---------------------------------------------------------------------------
 if os.path.isdir(FRONTEND_DIR):
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+    app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
+    app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
 
 # ---------------------------------------------------------------------------
 # OAuth2 scheme (FinSight auth)
@@ -294,8 +298,37 @@ async def read_root():
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return JSONResponse(status_code=404, content={"error": "Frontend not found"})
+    return JSONResponse(
+        status_code=404, content={"error": "Frontend not found"}
+        )
 
+# ---------------------------------------------------------------------------
+# LOGIN ROUTE
+# ---------------------------------------------------------------------------
+
+@app.get("/login.html")
+async def login_page():
+    login_path = os.path.join(FRONTEND_DIR, "login.html")
+    if os.path.exists(login_path):
+        return FileResponse(login_path)
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Login page not found"}
+    )
+
+# ---------------------------------------------------------------------------
+# REGISTER ROUTE
+# ---------------------------------------------------------------------------
+
+@app.get("/register.html")
+async def register_page():
+    register_path = os.path.join(FRONTEND_DIR, "register.html")
+    if os.path.exists(register_path):
+        return FileResponse(register_path)
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Register page not found"}
+    )
 
 # ===========================================================================
 # HEALTH CHECK — single endpoint, merged information
