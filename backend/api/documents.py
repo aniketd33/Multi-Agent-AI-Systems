@@ -1,15 +1,17 @@
-﻿"""
+"""
 Documents API Endpoints
 Handles document upload, listing, retrieval, and deletion
 Multi-Agent AI System for Finance and Business Insights
 Developer: Aniket - Document Intelligence Agent Module
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query, status
-from fastapi.responses import JSONResponse
-from typing import List, Optional
+import asyncio
 import logging
 from pathlib import Path
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import JSONResponse
 
 # Import our services and database
 from backend.services.upload import process_upload, delete_file
@@ -18,8 +20,14 @@ from backend.database import (
     get_all_documents,
     get_documents_filtered,
     get_document_by_id,
-    delete_document as db_delete_document
+    delete_document as db_delete_document,
+    update_document_status,
 )
+
+# Document Agent pipeline (Durga's module).
+# process_document() is synchronous and never raises — it returns a
+# ProcessingResult with .success / .error.
+from backend.document_agent.pipeline import process_document
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,39 +36,80 @@ logger = logging.getLogger(__name__)
 # Create API router
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
+
+# ============================================
+# BACKGROUND TASK — pipeline worker
+# ============================================
+
+async def _run_pipeline(file_path: str, document_id: str, filename: str) -> None:
+    """
+    Background task: run the Document Agent pipeline for one document.
+
+    Must be async so it runs INSIDE the FastAPI event loop (not in a
+    threadpool).  This lets us `await` the async database calls directly.
+    The sync process_document() call is offloaded via asyncio.to_thread()
+    so it does not block the event loop.
+
+    Status transitions:
+        uploaded  ->  processing  (immediately before pipeline starts)
+        processing -> indexed     (pipeline succeeded)
+        processing -> failed      (pipeline returned success=False)
+    """
+    logger.info(f"[pipeline] Starting processing for {filename} (ID: {document_id})")
+
+    # Mark as processing
+    await update_document_status(document_id, "processing")
+
+    # Run the sync pipeline in a thread so the event loop is not blocked.
+    result = await asyncio.to_thread(
+        process_document,
+        file_path=file_path,
+        document_id=document_id,
+        metadata={},
+    )
+
+    if result.success:
+        await update_document_status(document_id, "indexed")
+        logger.info(
+            f"[pipeline] Indexed {filename}: "
+            f"{result.chunks_indexed} chunk(s). {result.message}"
+        )
+    else:
+        await update_document_status(document_id, "failed")
+        logger.error(
+            f"[pipeline] Failed to process {filename}: {result.error}"
+        )
+
+
 # ============================================
 # UPLOAD ENDPOINT
 # ============================================
 
 @router.post("/upload")
 async def upload_document(
-    file: UploadFile = File(...)
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
 ):
     """
-    Upload a document (PDF, DOCX, or TXT)
-    
-    This endpoint:
-    1. Receives the uploaded file
-    2. Validates file type and size
-    3. Saves file to disk
-    4. Stores metadata in database
-    5. Returns document information
-    
+    Upload a document (PDF, DOCX, or TXT).
+
+    The endpoint:
+      1. Validates file extension, size and MIME type.
+      2. Saves the file to data/uploads/.
+      3. Inserts a metadata row into documents.db with status='uploaded'.
+      4. Returns HTTP 201 immediately.
+      5. Runs the Document Agent pipeline as a background task; the
+         document status updates to 'processing', then 'indexed' or 'failed'.
+
     Args:
-        file: Uploaded file (multipart/form-data)
-        
-    Returns:
-        JSON response with document details
-        
-    Raises:
-        HTTPException: If validation fails or upload error occurs
-        
-    Example Success Response:
+        file: Uploaded file (multipart/form-data).
+
+    Returns 201:
         {
             "status": "success",
             "message": "Document uploaded successfully",
             "document": {
-                "document_id": "123e4567-e89b-12d3-a456-426614174000",
+                "document_id": "...",
                 "filename": "report.pdf",
                 "file_type": "PDF",
                 "file_size": 1024000,
@@ -68,68 +117,62 @@ async def upload_document(
                 "status": "uploaded"
             }
         }
-        
-    Example Error Response:
-        {
-            "status": "error",
-            "message": "File too large (25.5 MB). Maximum allowed: 20 MB"
-        }
     """
-    
     try:
-        logger.info(f"📤 Upload request received: {file.filename}")
-        
-        # Read file content
+        logger.info(f"Upload request received: {file.filename}")
+
+        # --- Step 1: read bytes ---
         file_content = await file.read()
         file_size = len(file_content)
-        
         logger.info(f"File size: {file_size} bytes ({file_size / 1024:.2f} KB)")
-        
-        # Process upload (validation + storage)
+
+        # --- Step 2: validate + save to disk ---
         result = await process_upload(
             file_content=file_content,
             filename=file.filename,
-            file_size=file_size
+            file_size=file_size,
         )
-        
-        # Check if upload processing failed
+
         if not result.get("success"):
             error_message = result.get("error", "Upload processing failed")
-            logger.error(f"❌ Upload failed: {error_message}")
+            logger.error(f"Upload failed: {error_message}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_message
+                detail=error_message,
             )
-        
-        # Extract upload result
-        document_id = result["document_id"]
-        filename = result["filename"]
-        file_type = result["file_type"]
-        file_size = result["file_size"]
-        file_path = result["file_path"]
-        upload_date = result["upload_date"]
-        
-        # Store metadata in database
-        logger.info(f"💾 Storing metadata in database...")
+
+        document_id  = result["document_id"]
+        filename     = result["filename"]
+        file_type    = result["file_type"]
+        file_size    = result["file_size"]
+        file_path    = result["file_path"]
+        upload_date  = result["upload_date"]
+
+        # --- Step 3: insert DB record (status = 'uploaded') ---
+        logger.info("Storing metadata in database...")
         db_success = await insert_document(
             document_id=document_id,
             filename=filename,
             file_type=file_type,
             file_size=file_size,
             file_path=file_path,
-            status="uploaded"
+            status="uploaded",
         )
-        
-        # If database insertion fails, delete the uploaded file
+
         if not db_success:
-            logger.error("❌ Database insertion failed, cleaning up file...")
+            logger.error("Database insertion failed, cleaning up file...")
             delete_file(Path(file_path))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to store document metadata. File removed."
+                detail="Failed to store document metadata. File removed.",
             )
-        
-        # Success response
+
+        # --- Step 4: schedule background pipeline ---
+        # The HTTP response is sent first; then _run_pipeline() fires.
+        background_tasks.add_task(_run_pipeline, file_path, document_id, filename)
+        logger.info(f"Pipeline queued for {filename} (ID: {document_id})")
+
+        # --- Step 5: return 201 ---
         response_data = {
             "status": "success",
             "message": "Document uploaded successfully",
@@ -139,31 +182,29 @@ async def upload_document(
                 "file_type": file_type,
                 "file_size": file_size,
                 "upload_date": upload_date,
-                "status": "uploaded"
-            }
+                "status": "uploaded",   # pipeline will update this asynchronously
+            },
         }
-        
-        logger.info(f"✅ Upload complete: {filename} (ID: {document_id})")
-        
+
+        logger.info(f"Upload complete: {filename} (ID: {document_id})")
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content=response_data
+            content=response_data,
         )
-        
+
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
-        
+
     except Exception as e:
-        logger.error(f"❌ Unexpected error during upload: {str(e)}")
+        logger.error(f"Unexpected error during upload: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Internal server error: {e}",
         )
 
 
 # ============================================
-# LIST DOCUMENTS ENDPOINT (Placeholder for Stage 5)
+# LIST DOCUMENTS ENDPOINT
 # ============================================
 
 @router.get("/")
@@ -171,15 +212,15 @@ async def list_documents(
     status_filter: Optional[str] = Query(
         default=None,
         alias="status",
-        description="Filter by document status (e.g. uploaded, processing, indexed, failed)"
+        description="Filter by document status (uploaded, processing, indexed, failed)",
     ),
     file_type: Optional[str] = Query(
         default=None,
-        description="Filter by file type (PDF, DOCX, TXT)"
+        description="Filter by file type (PDF, DOCX, TXT)",
     ),
     search: Optional[str] = Query(
         default=None,
-        description="Case-insensitive substring search on filename"
+        description="Case-insensitive substring search on filename",
     ),
 ):
     """
@@ -214,117 +255,102 @@ async def list_documents(
                 "status": "success",
                 "count": len(documents),
                 "documents": documents,
-            }
+            },
         )
 
     except Exception as e:
         logger.error(f"Failed to fetch documents: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch documents: {e}"
+            detail=f"Failed to fetch documents: {e}",
         )
 
+
 # ============================================
-# GET DOCUMENT BY ID ENDPOINT (Placeholder for Stage 5)
+# GET DOCUMENT BY ID ENDPOINT
 # ============================================
 
 @router.get("/{document_id}")
 async def get_document(document_id: str):
     """
-    Get details of a specific document
-    
+    Get details of a specific document.
+
     Args:
-        document_id: Unique document ID
-        
-    Returns:
-        JSON response with document details
-        
-    Note: Full implementation in Stage 5
+        document_id: Unique document ID.
     """
     try:
-        logger.info(f"🔍 Fetching document: {document_id}")
+        logger.info(f"Fetching document: {document_id}")
         document = await get_document_by_id(document_id)
-        
+
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document not found: {document_id}"
+                detail=f"Document not found: {document_id}",
             )
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={
-                "status": "success",
-                "document": document
-            }
+            content={"status": "success", "document": document},
         )
-        
+
     except HTTPException:
         raise
-        
+
     except Exception as e:
-        logger.error(f"❌ Failed to fetch document: {str(e)}")
+        logger.error(f"Failed to fetch document: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch document: {str(e)}"
+            detail=f"Failed to fetch document: {e}",
         )
 
 
 # ============================================
-# DELETE DOCUMENT ENDPOINT (Placeholder for Stage 5)
+# DELETE DOCUMENT ENDPOINT
 # ============================================
 
 @router.delete("/{document_id}")
 async def delete_document_endpoint(document_id: str):
     """
-    Delete a document
-    
+    Delete a document and its physical file.
+
     Args:
-        document_id: Unique document ID
-        
-    Returns:
-        JSON response confirming deletion
-        
-    Note: Full implementation in Stage 5
+        document_id: Unique document ID.
     """
     try:
-        logger.info(f"🗑️  Deleting document: {document_id}")
-        
-        # Get document info first
+        logger.info(f"Deleting document: {document_id}")
+
         document = await get_document_by_id(document_id)
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document not found: {document_id}"
+                detail=f"Document not found: {document_id}",
             )
-        
-        # Delete from database
+
         db_success = await db_delete_document(document_id)
         if not db_success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to delete document from database"
+                detail="Failed to delete document from database",
             )
-        
-        # Delete physical file
-        file_path = Path(document['file_path'])
+
+        file_path = Path(document["file_path"])
         if file_path.exists():
             delete_file(file_path)
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "status": "success",
-                "message": f"Document deleted: {document['filename']}"
-            }
+                "message": f"Document deleted: {document['filename']}",
+            },
         )
-        
+
     except HTTPException:
         raise
-        
+
     except Exception as e:
-        logger.error(f"❌ Failed to delete document: {str(e)}")
+        logger.error(f"Failed to delete document: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete document: {str(e)}"
+            detail=f"Failed to delete document: {e}",
         )
