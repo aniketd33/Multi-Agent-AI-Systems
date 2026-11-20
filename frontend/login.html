@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in | FinSight AI</title>
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+    <main class="auth-shell">
+        <section class="visual"><a class="brand" href="index.html">F <b>FinSight AI</b></a>
+            <div><small>FINANCIAL INTELLIGENCE, REIMAGINED</small>
+                <h1>Turn complex reports into <em>clear decisions.</em></h1>
+                <p>A focused workspace for financial documents, research and AI-assisted analysis.</p>
+            </div><small>Multi-Agent Financial Research Platform</small>
+        </section>
+        <section class="form-side">
+            <form class="card" id="loginForm"><small>WELCOME BACK</small>
+                <h2>Sign in to your workspace</h2>
+                <p>Enter your account details to continue.</p><label>Email address</label><input id="email" type="email"
+                    autocomplete="email" required placeholder="you@example.com"><label>Password</label><input
+                    id="password" type="password" autocomplete="current-password" required placeholder="Your password">
+                <div id="message" role="status"></div><button id="submitButton">Sign in →</button>
+                <p class="switch">New to FinSight AI? <a href="register.html">Create an account</a></p>
+            </form>
+        </section>
+    </main>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

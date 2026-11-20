@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: #f4f7f5;
+    color: #17241f;
+    font-family: 'DM Sans', sans-serif
+}
+
+.auth-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr
+}
+
+.visual {
+    background: linear-gradient(140deg, #25875f, #103d2d);
+    color: white;
+    padding: 42px 9%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between
+}
+
+.brand {
+    color: white;
+    text-decoration: none;
+    font: 800 22px Manrope
+}
+
+.brand:first-letter {
+    background: #ffffff25;
+    padding: 9px;
+    border-radius: 10px
+}
+
+.visual>div {
+    max-width: 500px
+}
+
+.visual small,
+.card>small {
+    letter-spacing: 1.5px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #bce5ce
+}
+
+.visual h1 {
+    font: 800 clamp(34px, 4vw, 55px)/1.15 Manrope;
+    letter-spacing: -2px
+}
+
+.visual em {
+    font-style: normal;
+    color: #bce5ce
+}
+
+.visual p {
+    line-height: 1.8;
+    color: #d6e8dd;
+    max-width: 410px
+}
+
+.form-side {
+    display: grid;
+    place-items: center;
+    padding: 28px
+}
+
+.card {
+    background: white;
+    border: 1px solid #e3ebe6;
+    border-radius: 17px;
+    padding: 40px;
+    width: min(100%, 420px);
+    box-shadow: 0 20px 60px #153d2a0c
+}
+
+.card>small {
+    color: #16865c
+}
+
+.card h2 {
+    font: 800 25px Manrope;
+    margin: 12px 0 8px
+}
+
+.card>p {
+    font-size: 13px;
+    color: #7e8c84;
+    margin: 0 0 25px
+}
+
+.card label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 15px 0 7px
+}
+
+.card input {
+    width: 100%;
+    height: 46px;
+    border: 1px solid #dfe7e2;
+    border-radius: 8px;
+    padding: 0 12px;
+    font: 13px 'DM Sans';
+    outline: none
+}
+
+.card input:focus {
+    border-color: #16865c;
+    box-shadow: 0 0 0 3px #16865c16
+}
+
+.card button {
+    width: 100%;
+    height: 47px;
+    background: #16865c;
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    font-weight: 700;
+    margin-top: 18px;
+    cursor: pointer
+}
+
+.card button:disabled {
+    opacity: .6
+}
+
+#message {
+    font-size: 12px;
+    color: #bd5148;
+    min-height: 18px;
+    margin-top: 9px
+}
+
+.switch {
+    text-align: center !important;
+    margin: 22px 0 0 !important
+}
+
+.switch a {
+    color: #16865c;
+    font-weight: 700;
+    text-decoration: none
+}
+
+@media(max-width:760px) {
+    .auth-shell {
+        grid-template-columns: 1fr
+    }
+
+    .visual {
+        min-height: 260px;
+        padding: 25px 7%
+    }
+
+    .visual>div {
+        margin: 45px 0 25px
+    }
+
+    .visual h1 {
+        font-size: 34px
+    }
+
+    .form-side {
+        padding: 22px
+    }
+
+    .card {
+        padding: 28px 23px
+    }
+}

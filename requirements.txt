@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+pydantic[email]
+SQLAlchemy
+PyMuPDF
+python-multipart
