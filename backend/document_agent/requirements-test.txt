@@ -1,0 +1,15 @@
+# Test-only dependencies for the Document Agent.
+# These are NOT needed to run the Document Agent itself — only to run its tests.
+#
+# Install runtime + test deps together:
+#   pip install -r backend/document_agent/requirements.txt
+#   pip install -r backend/document_agent/requirements-test.txt
+
+# Pull in the runtime dependencies (sentence-transformers, chromadb, pypdf,
+# python-docx, pytest) defined in requirements.txt.
+-r requirements.txt
+
+# Extra test-only dependency used to generate small SYNTHETIC PDF fixtures for
+# the extraction tests. fpdf2 is lightweight and used ONLY in tests, never in
+# the running application.
+fpdf2>=2.7.4

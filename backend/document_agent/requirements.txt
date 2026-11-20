@@ -1,0 +1,20 @@
+# Document Agent — Document Processing + AI Pipeline
+# Module-local dependencies. NOT added to the root requirements.txt.
+#
+# NOTE: These versions are recommended MINIMUMS. They have NOT been test-
+# installed in this environment (Python is not yet installed on the dev
+# machine). Run `pip install -r backend/document_agent/requirements.txt`
+# after Python is available and adjust the pins if the resolver reports a
+# conflict.
+
+# --- Embeddings & vector store ---
+sentence-transformers>=2.2.2   # Generates vector embeddings (pulls in torch + transformers)
+chromadb>=0.4.22               # Persistent vector DB with similarity search
+
+# --- Document text extraction ---
+pypdf>=4.0.0                   # PDF text extraction (pure-Python, MIT-licensed)
+python-docx>=1.1.0             # DOCX text extraction (paragraphs + tables)
+# TXT extraction uses Python's built-in open(); no extra dependency needed.
+
+# --- Testing ---
+pytest>=7.4.0                  # Test runner for unit + end-to-end tests
