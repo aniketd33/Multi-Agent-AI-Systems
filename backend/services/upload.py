@@ -29,7 +29,8 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 UPLOAD_DIR = PROJECT_ROOT / "data" / "uploads"
 
 # Maximum file size (20 MB)
-MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
+# Maximum file size (100 MB)
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB in bytes
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
@@ -265,7 +266,7 @@ async def process_upload(
     Example Error:
         {
             "success": False,
-            "error": "File too large (25.5 MB). Maximum allowed: 20 MB"
+            "error": f"File too large ({actual_mb:.2f} MB). Maximum allowed: 100 MB"
         }
     """
     
