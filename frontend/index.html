@@ -209,6 +209,49 @@
                 </div>
             </section>
 
+            <!-- Single Red Flag Analysis section -->
+            <section class="panel rfa-panel" id="rfaPanel">
+                <div class="panel-heading">
+                    <div>
+                        <h3>Red Flag Analysis</h3>
+                        <p>Evidence-backed financial risk signals detected in your uploaded documents.</p>
+                    </div>
+                    <span class="panel-icon" style="background:#fff0ed;color:#d46c63;">⚑</span>
+                </div>
+
+                <div class="rfa-row" style="margin-top:18px;">
+                    <label class="rfa-label" for="rfaDocSelect">SELECT DOCUMENT</label>
+                    <select id="rfaDocSelect" class="rfa-select">
+                        <option value="">Loading documents...</option>
+                    </select>
+                </div>
+
+                <div class="rfa-row rfa-actions" style="margin-top:14px;">
+                    <button type="button" id="rfaRunBtn" class="rfa-run-btn">
+                        ⚑ View Risk Analysis
+                    </button>
+                    <span id="rfaStatus" class="rfa-status" style="display:none;"></span>
+                </div>
+
+                <div id="rfaResults" style="display:none;margin-top:20px;">
+                    <div id="rfaSummaryBar" class="rfa-summary-bar"></div>
+                    <div id="rfaCounts" class="stats-grid" style="margin-bottom:16px;"></div>
+
+                    <div class="rfa-row" style="margin-bottom:12px;">
+                        <label class="rfa-label" for="rfaSeverityFilter">FILTER BY SEVERITY</label>
+                        <select id="rfaSeverityFilter" class="rfa-select rfa-filter">
+                            <option value="all">All findings</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+
+                    <div id="rfaFlagList" class="rfa-flag-list"></div>
+                </div>
+            </section>
+
             <footer class="footer">
                 <span>© <span id="currentYear">2026</span> FinSight AI. Financial intelligence, reimagined.</span>
                 <span>Powered by Multi-Agent Intelligence</span>

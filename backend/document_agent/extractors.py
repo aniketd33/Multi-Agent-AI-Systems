@@ -74,10 +74,12 @@ def extract_text(file_path) -> List[PageText]:
 
 # --- PDF --------------------------------------------------------------------
 
+
 def _extract_pdf(path: Path) -> List[PageText]:
+    """Extract PDF text normally, using OCR for pages without extractable text."""
     try:
         from pypdf import PdfReader
-    except ImportError as e:  # pragma: no cover - depends on env
+    except ImportError as e:
         raise ExtractionError(
             "pypdf is not installed. Run pip install -r requirements.txt"
         ) from e
@@ -85,19 +87,105 @@ def _extract_pdf(path: Path) -> List[PageText]:
     try:
         reader = PdfReader(str(path))
     except Exception as e:
-        raise ExtractionError(f"Failed to open PDF '{path.name}': {e}") from e
+        raise ExtractionError(
+            f"Failed to open PDF '{path.name}': {e}"
+        ) from e
 
     pages: List[PageText] = []
+
     for index, page in enumerate(reader.pages, start=1):
         try:
             text = page.extract_text() or ""
-        except Exception as e:  # one bad page should not fail the whole file
+        except Exception as e:
             logger.warning(
-                "Failed to extract text from page %d of %s: %s",
-                index, path.name, e,
+                "Text extraction failed on page %d of %s: %s",
+                index, path.name, e
             )
             text = ""
+
         pages.append(PageText(text=text, page_number=index))
+
+    # OCR only pages where normal extraction returned no text.
+    empty_indexes = [
+        index for index, page in enumerate(pages)
+        if not page.text.strip()
+    ]
+
+    if empty_indexes:
+        try:
+            import pymupdf
+            import pytesseract
+            from PIL import Image
+            from io import BytesIO
+            import os
+            import shutil
+
+            # Find Tesseract executable.
+            configured_path = os.environ.get("TESSERACT_CMD")
+            detected_path = shutil.which("tesseract")
+
+            if configured_path:
+                pytesseract.pytesseract.tesseract_cmd = configured_path
+            elif detected_path:
+                pytesseract.pytesseract.tesseract_cmd = detected_path
+            else:
+                windows_path = Path(
+                    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+                )
+                if windows_path.exists():
+                    pytesseract.pytesseract.tesseract_cmd = str(windows_path)
+
+            # Check OCR engine availability before processing pages.
+            pytesseract.get_tesseract_version()
+
+            pdf = pymupdf.open(str(path))
+
+            try:
+                for index in empty_indexes:
+                    try:
+                        pix = pdf[index].get_pixmap(
+                            matrix=pymupdf.Matrix(2, 2),
+                            alpha=False
+                        )
+
+                        image = Image.open(
+                            BytesIO(pix.tobytes("png"))
+                        )
+
+                        ocr_text = pytesseract.image_to_string(
+                            image,
+                            lang="eng"
+                        )
+
+                        pages[index].text = ocr_text.strip()
+
+                        logger.info(
+                            "OCR completed for page %d of %s (%d characters)",
+                            index + 1,
+                            path.name,
+                            len(ocr_text)
+                        )
+
+                    except Exception as e:
+                        logger.warning(
+                            "OCR failed on page %d of %s: %s",
+                            index + 1,
+                            path.name,
+                            e
+                        )
+            finally:
+                pdf.close()
+
+        except ImportError as e:
+            raise ExtractionError(
+                "OCR dependencies missing. Install pytesseract and Pillow."
+            ) from e
+
+        except Exception as e:
+            raise ExtractionError(
+                f"OCR initialization failed for '{path.name}': {e}"
+            ) from e
+
     return pages
 
 

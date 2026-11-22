@@ -20,7 +20,11 @@ SQLAlchemy
 aiosqlite==0.19.0
 
 # PDF processing
+# PDF processing
 PyMuPDF
+pypdf
+pytesseract
+Pillow
 
 # Testing
 pytest==7.4.3
