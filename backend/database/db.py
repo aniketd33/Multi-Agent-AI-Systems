@@ -14,6 +14,7 @@ import os
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +51,19 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
+
+
+CREATE_RED_FLAG_TABLE = """
+CREATE TABLE IF NOT EXISTS red_flag_analyses (
+    document_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    findings_json TEXT NOT NULL DEFAULT '[]',
+    error TEXT,
+    analyzed_at TEXT NOT NULL,
+    FOREIGN KEY (document_id) REFERENCES documents(document_id)
+);
+"""
+
 
 # Create index for faster queries
 CREATE_INDEX_STATUS = """
@@ -105,7 +119,8 @@ async def initialize_database() -> bool:
             await db.execute(CREATE_INDEX_STATUS)
             await db.execute(CREATE_INDEX_UPLOAD_DATE)
             logger.info("✅ Database indexes created/verified")
-            
+            await db.execute(CREATE_RED_FLAG_TABLE)
+            logger.info("Red Flag analyses table created/verified")
             # Commit changes
             await db.commit()
             
@@ -562,3 +577,64 @@ async def check_database_health() -> Dict:
             "status": "unhealthy",
             "error": str(e)
         }
+
+async def save_red_flag_analysis(
+    document_id: str,
+    status: str,
+    findings: List[Dict],
+    error: Optional[str] = None,
+) -> bool:
+    """Insert or update the Red Flag Agent result for a document."""
+    try:
+        analyzed_at = datetime.now().isoformat()
+        findings_json = json.dumps(findings, ensure_ascii=False)
+
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            await db.execute(
+                """
+                INSERT INTO red_flag_analyses (
+                    document_id, status, findings_json, error, analyzed_at
+                )
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(document_id) DO UPDATE SET
+                    status = excluded.status,
+                    findings_json = excluded.findings_json,
+                    error = excluded.error,
+                    analyzed_at = excluded.analyzed_at
+                """,
+                (document_id, status, findings_json, error, analyzed_at),
+            )
+            await db.commit()
+
+        return True
+
+    except Exception as exc:
+        logger.exception("Failed to save Red Flag analysis: %s", exc)
+        return False
+
+
+async def get_red_flag_analysis(document_id: str) -> Optional[Dict]:
+    """Retrieve the saved Red Flag Agent result."""
+    try:
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """
+                SELECT document_id, status, findings_json, error, analyzed_at
+                FROM red_flag_analyses
+                WHERE document_id = ?
+                """,
+                (document_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
+
+        if not row:
+            return None
+
+        result = dict(row)
+        result["findings"] = json.loads(result.pop("findings_json"))
+        return result
+
+    except Exception as exc:
+        logger.exception("Failed to retrieve Red Flag analysis: %s", exc)
+        return None

@@ -873,3 +873,522 @@ body.dark .status-badge.status-indexed    { background: #2d1f4a; color: #c5a8f8;
 body.dark .status-badge.status-failed     { background: #3d1414; color: #f8a3a3; }
 body.dark .delete-btn                     { background: #c0524a; }
 body.dark .delete-btn:hover               { background: #a63d36; }
+
+
+/* ============================================================
+   RED FLAG AGENT - PROFESSIONAL UI
+   FinSight AI
+   ============================================================ */
+
+.rfa-panel {
+    margin-top: 22px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    min-width: 0;
+}
+
+.rfa-panel .panel-heading {
+    margin-bottom: 20px;
+}
+
+.rfa-panel .panel-heading h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+}
+
+.rfa-panel .panel-heading p {
+    line-height: 1.6;
+}
+
+/* Document selection */
+
+.rfa-row {
+    display: flex;
+    align-items: end;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.rfa-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.rfa-select {
+    width: 100%;
+    min-width: 220px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.rfa-select:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(22, 134, 92, .10);
+}
+
+.rfa-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rfa-run-btn {
+    min-height: 42px;
+    padding: 11px 18px;
+    border: none;
+    border-radius: 9px;
+    background: var(--green);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    transition: .2s;
+    white-space: nowrap;
+}
+
+.rfa-run-btn:hover {
+    background: var(--green-dark);
+    transform: translateY(-1px);
+}
+
+.rfa-run-btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Status messages */
+
+.rfa-status {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 9px 13px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.rfa-info {
+    background: #eaf2ff;
+    color: #285b9b;
+}
+
+.rfa-success {
+    background: #e8f5ee;
+    color: #16734d;
+}
+
+.rfa-error {
+    background: #fff0ef;
+    color: #bd3939;
+}
+
+/* Results */
+
+#rfaResults {
+    margin-top: 25px;
+}
+
+.rfa-summary-bar {
+    padding: 15px 17px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.rfa-danger {
+    background: #fff0ef;
+    color: #a72e2e;
+    border-color: #f5cfcb;
+}
+
+.rfa-warn {
+    background: #fff7e8;
+    color: #96600c;
+    border-color: #f3dfb7;
+}
+
+.rfa-ok {
+    background: #eaf7ef;
+    color: #20734b;
+    border-color: #cce9d7;
+}
+
+/* KPI cards */
+
+#rfaCounts {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 13px;
+    margin-bottom: 23px;
+}
+
+#rfaCounts .stat-card {
+    min-width: 0;
+    padding: 17px;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+#rfaCounts .stat-heading {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+#rfaCounts .stat-card h2 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 27px;
+    margin-top: 11px;
+    font-weight: 800;
+}
+
+/* Individual KPI colors */
+
+#rfaCounts .stat-card:nth-child(1) h2 {
+    color: var(--text);
+}
+
+#rfaCounts .stat-card:nth-child(2) h2 {
+    color: #dc4545;
+}
+
+#rfaCounts .stat-card:nth-child(3) h2 {
+    color: #e47b35;
+}
+
+#rfaCounts .stat-card:nth-child(4) h2 {
+    color: #d59b27;
+}
+
+#rfaCounts .stat-card:nth-child(5) h2 {
+    color: #239b65;
+}
+
+/* Filters */
+
+.rfa-filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 22px 0 14px;
+}
+
+.rfa-filter label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.rfa-filter select {
+    min-width: 150px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    outline: none;
+}
+
+/* Findings list */
+
+.rfa-flag-list {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+.rfa-flag-card {
+    position: relative;
+    overflow: hidden;
+    padding: 19px;
+    border: 1px solid var(--border);
+    border-left: 4px solid #a0a0a0;
+    border-radius: 11px;
+    background: var(--surface);
+    transition: transform .2s, box-shadow .2s;
+}
+
+.rfa-flag-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, .055);
+}
+
+.rfa-flag-card.sev-critical {
+    border-left-color: #dc4545;
+}
+
+.rfa-flag-card.sev-high {
+    border-left-color: #e47b35;
+}
+
+.rfa-flag-card.sev-medium {
+    border-left-color: #d59b27;
+}
+
+.rfa-flag-card.sev-low {
+    border-left-color: #239b65;
+}
+
+.rfa-flag-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.rfa-sev-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    white-space: nowrap;
+}
+
+.sev-critical .rfa-sev-badge {
+    background: #fee2e2;
+    color: #b42323;
+}
+
+.sev-high .rfa-sev-badge {
+    background: #ffeadb;
+    color: #bd5a19;
+}
+
+.sev-medium .rfa-sev-badge {
+    background: #fff3d4;
+    color: #94620d;
+}
+
+.sev-low .rfa-sev-badge {
+    background: #dcf5e6;
+    color: #187548;
+}
+
+.rfa-category {
+    display: inline-block;
+    margin-top: 11px;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: var(--green-soft);
+    color: var(--green-dark);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.rfa-flag-desc {
+    margin-top: 12px;
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.75;
+}
+
+.rfa-flag-evidence {
+    margin-top: 13px;
+    padding: 13px 14px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.rfa-flag-evidence::first-line {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.rfa-flag-meta {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 9px;
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.rfa-followup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 13px;
+    padding: 12px 14px;
+    border-left: 3px solid var(--green);
+    background: var(--green-soft);
+    border-radius: 0 8px 8px 0;
+    font-size: 11px;
+    line-height: 1.65;
+}
+
+.rfa-followup strong {
+    color: var(--green-dark);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.rfa-followup span {
+    color: var(--text);
+}
+
+.rfa-empty {
+    padding: 30px 18px;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+/* Dark theme */
+
+body.dark .rfa-info {
+    background: #1d3048;
+    color: #a8ceff;
+}
+
+body.dark .rfa-success {
+    background: #1c3829;
+    color: #8bd6ad;
+}
+
+body.dark .rfa-error {
+    background: #3a2222;
+    color: #ffaaaa;
+}
+
+body.dark .rfa-danger {
+    background: #3b2222;
+    color: #ffaaaa;
+    border-color: #613232;
+}
+
+body.dark .rfa-warn {
+    background: #3b3020;
+    color: #f2ca7d;
+    border-color: #594527;
+}
+
+body.dark .rfa-ok {
+    background: #1c3829;
+    color: #8bd6ad;
+    border-color: #315b42;
+}
+
+body.dark .sev-critical .rfa-sev-badge {
+    background: #512626;
+    color: #ffaaaa;
+}
+
+body.dark .sev-high .rfa-sev-badge {
+    background: #50301e;
+    color: #ffbb88;
+}
+
+body.dark .sev-medium .rfa-sev-badge {
+    background: #4b3a1c;
+    color: #f5d38b;
+}
+
+body.dark .sev-low .rfa-sev-badge {
+    background: #1c402e;
+    color: #9ae2b9;
+}
+
+body.dark .rfa-flag-evidence,
+body.dark .rfa-flag-meta {
+    background: #131d17;
+}
+
+body.dark .rfa-followup {
+    background: #20382b;
+}
+
+/* Responsive */
+
+@media (max-width: 900px) {
+    #rfaCounts {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .rfa-panel {
+        padding: 16px;
+    }
+
+    .rfa-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .rfa-select {
+        min-width: 0;
+    }
+
+    .rfa-run-btn {
+        width: 100%;
+    }
+
+    #rfaCounts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    #rfaCounts .stat-card {
+        padding: 13px;
+    }
+
+    #rfaCounts .stat-card h2 {
+        font-size: 23px;
+    }
+
+    .rfa-flag-card {
+        padding: 15px;
+    }
+
+    .rfa-flag-title {
+        font-size: 12px;
+    }
+}
