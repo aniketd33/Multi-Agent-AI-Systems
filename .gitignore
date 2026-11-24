@@ -84,3 +84,8 @@ frontend/build/
 *.zip
 *.tar.gz
 *.rar
+
+# Internal stage completion reports
+STAGE3_DATABASE_COMPLETE.md
+STAGE4_UPLOAD_API_COMPLETE.md
+STAGE5_DOCUMENT_MANAGEMENT_COMPLETE.md
