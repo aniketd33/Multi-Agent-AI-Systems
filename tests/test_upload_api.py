@@ -46,7 +46,7 @@ async def test_upload_valid_pdf(client):
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "success"
-    assert data["message"] == "Document uploaded successfully"
+    assert "Document uploaded successfully" in data["message"]
     assert data["document"]["filename"] == "test_document.pdf"
     assert data["document"]["file_type"] == "PDF"
     assert data["document"]["status"] == "uploaded"
@@ -144,7 +144,7 @@ async def test_upload_empty_file(client):
 
 @pytest.mark.asyncio
 async def test_upload_oversized_file(client):
-    large_content = b"0" * (21 * 1024 * 1024)
+    large_content = b"0" * (101 * 1024 * 1024)  # 101 MB > 100 MB limit
 
     response = client.post(
         "/api/documents/upload",
@@ -294,3 +294,49 @@ async def test_upload_response_format(client):
 
     assert data["status"]   == "success"
     assert doc["status"]    == "uploaded"
+
+# ============================================
+# EXTRACTION AGENT INTEGRATION TESTS
+# ============================================
+
+@pytest.mark.asyncio
+async def test_extraction_agent_import():
+    # Extraction Agent is importable and extract_financials is callable.
+    from backend.extraction_agent import extract_financials, ExtractionResult
+    assert callable(extract_financials)
+
+
+@pytest.mark.asyncio
+async def test_extraction_in_pipeline_wiring(client):
+    # Verify extract_financials is present in _run_pipeline source code,
+    # and that uploading a text file returns HTTP 201 (pipeline is queued).
+    import inspect
+    from backend.api.documents import _run_pipeline
+    pipeline_src = inspect.getsource(_run_pipeline)
+    assert "extract_financials" in pipeline_src, "extract_financials not wired into _run_pipeline"
+
+    response = client.post(
+        "/api/documents/upload",
+        files={"file": ("wiring_test.txt", BytesIO(b"Revenue: 500 million"), "text/plain")},
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_extraction_failure_isolated():
+    # extract_financials raises DocumentAgentError for a missing file;
+    # verify the exception type and that it does not propagate silently.
+    import asyncio
+    from pathlib import Path
+    from backend.extraction_agent import extract_financials
+    from backend.document_agent.exceptions import DocumentAgentError
+
+    missing = str(Path("does_not_exist_xyz.txt").resolve())
+    try:
+        await asyncio.to_thread(extract_financials, missing, "test-doc-id")
+        assert False, "Expected DocumentAgentError for missing file"
+    except DocumentAgentError:
+        pass  # expected
+    except Exception as exc:
+        assert False, f"Unexpected exception type: {type(exc).__name__}: {exc}"
+

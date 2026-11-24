@@ -22,7 +22,7 @@
 
 "use strict";
 
-const API = "http://127.0.0.1:8000";
+const API = "http://127.0.0.1:8001";
 
 const DOC_AGENT_MAX_SIZE = 100 * 1024 * 1024;
 const MAX_UPLOAD_SIZE = 100 * 1024 * 1024;

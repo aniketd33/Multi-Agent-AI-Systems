@@ -1,4 +1,4 @@
-﻿
+
 """
 Documents API Endpoints
 Handles document upload, listing, retrieval, deletion,
@@ -38,6 +38,7 @@ from backend.database.db import (
 
 from backend.document_agent.pipeline import process_document
 from backend.red_flag_agent.agent import run_red_flag_agent
+from backend.extraction_agent import extract_financials
 
 
 # Configure logging
@@ -109,6 +110,30 @@ async def _run_pipeline(
             filename,
             result.message,
         )
+
+        # Run Financial Extraction Agent.
+        try:
+            extraction_result = await asyncio.to_thread(
+                extract_financials,
+                file_path,
+                document_id,
+            )
+            revenue_count = len(extraction_result.revenue)
+            profit_count  = len(extraction_result.net_profit)
+            ebitda_count  = len(extraction_result.ebitda)
+            logger.info(
+                "[pipeline] Extraction complete for %s (ID: %s): "
+                "company=%s revenue_periods=%d net_profit_periods=%d ebitda_periods=%d",
+                filename, document_id,
+                extraction_result.company_name or "unknown",
+                revenue_count, profit_count, ebitda_count,
+            )
+        except Exception:
+            # Extraction failure must not affect indexing or Red Flag analysis.
+            logger.exception(
+                "[pipeline] Financial extraction failed for %s",
+                filename,
+            )
 
         # Run Red Flag Agent asynchronously.
         try:
